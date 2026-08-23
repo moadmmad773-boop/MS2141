@@ -11,8 +11,7 @@
     input { width: 90%; background: #222; color: #fff; text-align: center; border: 1px solid #444; }
     button { background: #00ffcc; color: #000; font-weight: bold; width: 90%; cursor: pointer; }
     .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 220px; margin: 20px auto; }
-    .dpad-btn { background: #333; color: #fff; padding: 15px; border-radius: 8px; font-weight: bold; user-select: none; cursor: pointer; }
-    .dpad-btn:active { background: #00ffcc; color: #000; }
+    .dpad-btn { background: #333; color: #fff; padding: 15px; border-radius: 8px; font-weight: bold; user-select: none; }
   </style>
 </head>
 <body>
@@ -26,6 +25,7 @@
 
   <div id="control-sec" style="display:none;">
     
+    <!-- قسم وضع رابط يوتيوب مباشر -->
     <div style="background: #222; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
       <h3 style="margin-bottom:10px; font-size:16px; color:#aaa;">تشغيل رابط مباشر</h3>
       <input id="yt-url" type="text" placeholder="الصق رابط فيديو YouTube هنا"/>
@@ -34,6 +34,7 @@
 
     <hr style="border-color:#333; margin:15px 0;">
 
+    <!-- أزرار التحكم بالأسهم -->
     <div class="dpad">
       <div></div><div class="dpad-btn" onclick="nav('up')">▲</div><div></div>
       <div class="dpad-btn" onclick="nav('left')">◀</div><div class="dpad-btn" style="background:#ff2d55;" onclick="nav('select')">OK</div><div class="dpad-btn" onclick="nav('right')">▶</div>
@@ -58,7 +59,7 @@
     };
 
     function connect() {
-      myPin = document.getElementById('pin-input').value.trim();
+      myPin = document.getElementById('pin-input').value;
       if(myPin) socket.emit('joinRoom', myPin);
     }
 
