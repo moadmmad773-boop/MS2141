@@ -3,39 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>شاشة السيارة</title>
+  <title>ريموت التحكم</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; background: #111; color: #fff; text-align: center; padding-top: 50px; }
-    .pin-box { font-size: 40px; font-weight: bold; letter-spacing: 5px; color: #00ffcc; margin: 20px 0; }
-    .status { font-size: 18px; color: #aaa; }
+    body { font-family: sans-serif; background: #222; color: #fff; text-align: center; padding: 20px; }
+    input { font-size: 24px; text-align: center; width: 150px; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
+    button { font-size: 18px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    .nav-btn { font-size: 16px; padding: 15px; margin: 5px; background: #007bff; width: 80px; }
+    #remoteControl { display: none; margin-top: 30px; }
   </style>
 </head>
 <body>
 
-  <h1>شاشة الكامري</h1>
-  <p class="status">رمز الاقتران الخاص بك:</p>
-  <div id="pinDisplay" class="pin-box">جاري الجلب...</div>
+  <!-- شاشة إدخال الـ PIN -->
+  <div id="pinScreen">
+    <h2>ادخل رمز PIN الظاهر على الشاشة</h2>
+    <input type="number" id="pinInput" placeholder="1234">
+    <br>
+    <button id="connectBtn">اتصال</button>
+  </div>
+
+  <!-- واجهة الريموت بعد الاتصال -->
+  <div id="remoteControl">
+    <h3>تم الاتصال بنجاح!</h3>
+    <div>
+      <button class="nav-btn" onclick="sendNav('UP')">فوق</button><br>
+      <button class="nav-btn" onclick="sendNav('LEFT')">يسار</button>
+      <button class="nav-btn" onclick="sendNav('RIGHT')">يمين</button><br>
+      <button class="nav-btn" onclick="sendNav('DOWN')">تحت</button>
+    </div>
+  </div>
 
   <script>
-    // الاتصال التلقائي بنفس السيرفر المستضيف
     const socket = io();
 
-    // تسجيل الشاشة واستلام الـ PIN
-    socket.emit('registerScreen');
+    const connectBtn = document.getElementById('connectBtn');
+    const pinInput = document.getElementById('pinInput');
+    const pinScreen = document.getElementById('pinScreen');
+    const remoteControl = document.getElementById('remoteControl');
 
-    socket.on('screenRegistered', (data) => {
-      document.getElementById('pinDisplay').innerText = data.pin;
+    // عند الضغط على زر الاتصال
+    connectBtn.addEventListener('click', () => {
+      const pin = pinInput.value.trim();
+      if (!pin) {
+        alert("يرجى كتابة الرمز أولاً!");
+        return;
+      }
+      socket.emit('verifyPin', pin);
     });
 
-    // استقبال الأوامر القادمة من الريموت
-    socket.on('stateUpdate', (data) => {
-      console.log('تم استقبال حالة جديدة:', data);
+    // استقبال رد السيرفر بعد التحقق
+    socket.on('pinVerified', (data) => {
+      if (data.success) {
+        pinScreen.style.display = 'none';
+        remoteControl.style.display = 'block';
+      } else {
+        alert('رمز الـ PIN غير صحيح!');
+      }
     });
 
-    socket.on('remoteNavigate', (dir) => {
-      console.log('تم استقبال أمر توجيه:', dir);
-    });
+    // إرسال أوامر التحكم
+    function sendNav(dir) {
+      socket.emit('navigate', dir);
+    }
   </script>
 </body>
 </html>
