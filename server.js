@@ -1,67 +1,71 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
+const path = require('path');
+const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+// إعداد WebSocket مع حزم Ping/Pong لضمان عدم فصل الاتصال
+const io = new Server(server, {
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
-// تخزين حالات الشاشات حسب رمز الغرفة (Pin Code)
-const carRooms = {};
+// خدمة الملفات الثابتة من مجلد public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// إدارة اتصالات الأجهزة والربط
+let screenSocket = null;
+let currentPin = null;
 
 function generatePin() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return Math.floor(1000 + Math.log10(Math.random() * 9000) * 1000).toString().substring(0, 4);
 }
 
 io.on('connection', (socket) => {
-  // 1. تسجيل الشاشة وتوليد غرفة جديدة
+  // تسجيل الشاشة الأصلية
   socket.on('registerScreen', () => {
-    const pin = generatePin();
-    socket.join(pin);
-    carRooms[pin] = {
-      currentApp: 'home',
-      youtubeId: ''
-    };
-    socket.emit('screenRegistered', { pin });
+    screenSocket = socket;
+    currentPin = Math.floor(1000 + Math.random() * 9000).toString();
+    socket.emit('screenRegistered', { pin: currentPin });
   });
 
-  // 2. ربط الجوال بالغرفة باستخدام الـ PIN
-  socket.on('joinRoom', (pin) => {
-    if (carRooms[pin]) {
-      socket.join(pin);
-      socket.emit('joinStatus', { success: true, pin });
-      io.to(pin).emit('stateUpdate', carRooms[pin]);
+  // التحقق من رمز PIN من الجوال (الريموت)
+  socket.on('verifyPin', (pin) => {
+    if (pin === currentPin) {
+      socket.emit('pinVerified', { success: true });
     } else {
-      socket.emit('joinStatus', { success: false, message: 'رمز الربط غير صحيح!' });
+      socket.emit('pinVerified', { success: false });
     }
   });
 
-  // 3. التوجيه وأوامر التحكم للسيارة المحددة
-  socket.on('navigate', ({ pin, dir }) => {
-    if (pin) io.to(pin).emit('remoteNavigate', dir);
+  // توجيه الأوامر من الريموت إلى الشاشة
+  socket.on('changeState', (data) => {
+    io.emit('stateUpdate', data);
   });
 
-  socket.on('openApp', ({ pin, appName }) => {
-    if (pin && carRooms[pin]) {
-      carRooms[pin].currentApp = appName;
-      io.to(pin).emit('stateUpdate', carRooms[pin]);
-    }
+  socket.on('navigate', (dir) => {
+    io.emit('remoteNavigate', dir);
   });
 
-  socket.on('playYoutube', ({ pin, videoId }) => {
-    if (pin && carRooms[pin]) {
-      carRooms[pin].youtubeId = videoId;
-      carRooms[pin].currentApp = 'youtube';
-      io.to(pin).emit('stateUpdate', carRooms[pin]);
+  socket.on('disconnect', () => {
+    if (socket === screenSocket) {
+      screenSocket = null;
     }
   });
 });
 
+// توجيه أي مسار غير معروف إلى صفحة index.html لتجنب خطأ Not Found
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// استقبال البورت الديناميكي من منصة الاستضافة
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
