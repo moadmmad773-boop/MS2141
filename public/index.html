@@ -215,17 +215,6 @@
     }
     setInterval(updateClock, 1000); updateClock();
 
-    // فك حظر الصوت بمجرد أي لمسة على الشاشة
-    window.addEventListener('click', forceUnmute);
-    window.addEventListener('touchstart', forceUnmute);
-
-    function forceUnmute() {
-      if (player && playerReady && player.unMute) {
-        player.unMute();
-        player.setVolume(100);
-      }
-    }
-
     socket.emit('registerScreen');
     socket.on('screenRegistered', (data) => {
       document.getElementById('pin-display').innerText = data.pin;
@@ -287,18 +276,11 @@
         return;
       }
 
+      // تشغيل الفيديو بالصوت مباشرة
       player.loadVideoById(videoId);
       player.unMute();
       player.setVolume(100);
       player.playVideo();
-
-      // تأكيد رفع الصوت وإلغاء الميوت بعد 300ms لكسر حظر حماية الصوت
-      setTimeout(() => {
-        if (player.unMute) {
-          player.unMute();
-          player.setVolume(100);
-        }
-      }, 300);
     }
 
     socket.on('playYoutube', (data) => {
@@ -315,11 +297,14 @@
     });
 
     socket.on('remoteNavigate', (dir) => {
-      forceUnmute();
-      if (dir === 'select' && player && playerReady) {
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) player.pauseVideo();
-        else player.playVideo();
+      if (player && playerReady) {
+        player.unMute();
+        player.setVolume(100);
+        if (dir === 'select') {
+          const state = player.getPlayerState();
+          if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+          else player.playVideo();
+        }
       }
     });
   </script>
