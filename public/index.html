@@ -55,8 +55,8 @@
     .control-btns-right, .control-btns-left { display: flex; gap: 24px; }
 
     .bottom-row { height: 33%; display: grid; grid-template-columns: 1fr 1fr 1fr 2.8fr; gap: 12px; align-items: center; }
-    .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
-    .theme-card { background: linear-gradient(180deg, #1d72b8 0%, #0f4c81 100%); padding: 8px 16px; align-items: flex-start; justify-content: space-between; position: relative; }
+    .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+    .theme-card { background: linear-gradient(180deg, #1d72b8 0%, #0f4c81 100%); padding: 8px 16px; align-items: flex-start; justify-content: space-between; position: relative; cursor: default; }
     .theme-title { font-size: 14px; color: #fff; }
     .theme-options { display: flex; gap: 18px; width: 100%; justify-content: center; align-items: center; flex: 1; margin-bottom: 5px; }
     .theme-num { width: 80px; height: 62px; background: #111; border: 1px solid #444; display: flex; justify-content: center; align-items: center; font-size: 34px; font-weight: bold; border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,0.6); }
@@ -81,11 +81,11 @@
     .cp-status { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; font-size: 11px; font-weight: 600; }
     .cp-quick-apps { display: flex; flex-direction: column; gap: 14px; }
     .cp-quick-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 22px; color: #fff; position: relative; }
-    .cp-home-btn { width: 38px; height: 38px; border: 2px solid #fff; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; }
+    .cp-home-btn { width: 38px; height: 38px; border: 2px solid #fff; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; cursor: pointer; }
     .cp-home-btn div { background: #fff; border-radius: 1px; }
 
     .cp-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px 10px; padding: 25px 40px; align-items: center; justify-items: center; }
-    .cp-app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; padding: 8px; border-radius: 18px; transition: transform 0.2s, box-shadow 0.2s; }
+    .cp-app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; padding: 8px; border-radius: 18px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
     .cp-app-item.selected { transform: scale(1.1); box-shadow: 0 0 0 3px #00ffcc; background: rgba(255,255,255,0.15); }
     .cp-app-icon { width: 72px; height: 72px; border-radius: 18px; display: flex; justify-content: center; align-items: center; font-size: 38px; color: #fff; box-shadow: 0 6px 15px rgba(0,0,0,0.3); position: relative; }
     .cp-app-name { color: #fff; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
@@ -138,7 +138,7 @@
 
       <div class="bottom-row">
         <div class="widget-box settings-btn"><div class="widget-icon">⚙️</div><div>الإعدادات</div></div>
-        <div class="widget-box carplay-btn"><div class="widget-icon">▶</div><div style="font-size: 13px;">Apple CarPlay</div></div>
+        <div class="widget-box carplay-btn" onclick="openCarPlay()"><div class="widget-icon">▶</div><div style="font-size: 13px;">Apple CarPlay</div></div>
         <div class="widget-box phone-btn"><div class="widget-icon">📞</div><div>هاتف</div></div>
         <div class="widget-box theme-card">
           <div class="theme-title">المظهر</div>
@@ -156,7 +156,7 @@
         <div class="cp-quick-icon" style="background:#ff3b30;">🎙️</div>
         <div class="cp-quick-icon" style="background:#34c759;">📞<div class="badge">2</div></div>
       </div>
-      <div class="cp-home-btn"><div></div><div></div><div></div><div></div></div>
+      <div class="cp-home-btn" onclick="closeCarPlay()"><div></div><div></div><div></div><div></div></div>
     </div>
 
     <div class="cp-grid">
@@ -176,7 +176,7 @@
         <div class="cp-app-icon" style="background: #34c759;">💬</div>
         <span class="cp-app-name">Message</span>
       </div>
-      <div class="cp-app-item" data-index="4">
+      <div class="cp-app-item" data-index="4" onclick="openYoutube()">
         <div class="cp-app-icon" style="background: #ff0000;">▶</div>
         <span class="cp-app-name">YouTube</span>
       </div>
@@ -204,7 +204,6 @@
     let player = null;
     let playerReady = false;
     let pendingVideoId = null;
-    let audioUnlocked = false;
 
     setTimeout(() => document.getElementById('boot-screen').classList.add('hidden'), 3500);
 
@@ -215,6 +214,17 @@
       document.getElementById('clock').innerText = `${hours}:${minutes} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
     }
     setInterval(updateClock, 1000); updateClock();
+
+    // فك حظر الصوت بمجرد أي لمسة على الشاشة
+    window.addEventListener('click', forceUnmute);
+    window.addEventListener('touchstart', forceUnmute);
+
+    function forceUnmute() {
+      if (player && playerReady && player.unMute) {
+        player.unMute();
+        player.setVolume(100);
+      }
+    }
 
     socket.emit('registerScreen');
     socket.on('screenRegistered', (data) => {
@@ -237,11 +247,10 @@
           'controls': 1,
           'playsinline': 1,
           'enablejsapi': 1,
-          'rel': 0
+          'origin': window.location.origin
         },
         events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
+          'onReady': onPlayerReady
         }
       });
     }
@@ -254,14 +263,18 @@
       }
     }
 
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PAUSED && !audioUnlocked) {
-        player.mute();
-        player.playVideo();
-      }
+    function openCarPlay() {
+      document.getElementById('carplay-screen').classList.add('active');
     }
 
-    function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
+    function closeCarPlay() {
+      document.getElementById('carplay-screen').classList.remove('active');
+    }
+
+    function openYoutube() { 
+      document.getElementById('youtube-screen').classList.add('active'); 
+    }
+
     function closeYoutube() { 
       document.getElementById('youtube-screen').classList.remove('active'); 
       if (player && player.stopVideo) player.stopVideo();
@@ -274,16 +287,18 @@
         return;
       }
 
-      if (!audioUnlocked) {
-        player.loadVideoById({ videoId: videoId });
-        player.mute();
-        player.playVideo();
-      } else {
-        player.loadVideoById({ videoId: videoId });
-        player.unMute();
-        player.setVolume(100);
-        player.playVideo();
-      }
+      player.loadVideoById(videoId);
+      player.unMute();
+      player.setVolume(100);
+      player.playVideo();
+
+      // تأكيد رفع الصوت وإلغاء الميوت بعد 300ms لكسر حظر حماية الصوت
+      setTimeout(() => {
+        if (player.unMute) {
+          player.unMute();
+          player.setVolume(100);
+        }
+      }, 300);
     }
 
     socket.on('playYoutube', (data) => {
@@ -292,22 +307,19 @@
     });
 
     socket.on('stateUpdate', (state) => {
-      if (state.currentApp === 'home') closeYoutube();
+      if (state.currentApp === 'carplay') openCarPlay();
+      if (state.currentApp === 'home') { closeCarPlay(); closeYoutube(); }
       if (state.currentApp === 'youtube' && state.youtubeId) {
         startVideo(state.youtubeId);
       }
     });
 
     socket.on('remoteNavigate', (dir) => {
-      audioUnlocked = true;
-      if (player && playerReady) {
-        player.unMute();
-        player.setVolume(100);
-        if (dir === 'select') {
-          const state = player.getPlayerState();
-          if (state === YT.PlayerState.PLAYING) player.pauseVideo();
-          else player.playVideo();
-        }
+      forceUnmute();
+      if (dir === 'select' && player && playerReady) {
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+        else player.playVideo();
       }
     });
   </script>
