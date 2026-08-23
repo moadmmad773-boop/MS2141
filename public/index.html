@@ -1,296 +1,40 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8"/>
-  <title>Toyota Interactive Screen</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شاشة السيارة</title>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
-
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; user-select: none; }
-    body, html { width: 100vw; height: 100vh; overflow: hidden; background-color: #000; }
-
-    /* بانر الباركود المنسدل */
-    #pair-banner {
-      position: absolute; top: -180px; left: 50%; transform: translateX(-50%);
-      background: rgba(18, 19, 24, 0.95); border: 2px solid #00ffcc; border-radius: 16px;
-      padding: 12px 25px; color: #fff; display: flex; align-items: center; gap: 20px;
-      z-index: 100; transition: top 0.5s ease; box-shadow: 0 0 25px rgba(0,255,204,0.4);
-    }
-    #pair-banner.show { top: 15px; }
-    #qrcode img { border-radius: 8px; border: 2px solid #fff; }
-
-    /* 1. Toyota Boot Screen */
-    #boot-screen {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background-color: #000; z-index: 99; display: flex; flex-direction: column;
-      justify-content: center; align-items: center; transition: opacity 1s ease-in-out;
-    }
-    #boot-screen img { max-width: 42%; height: auto; }
-    .boot-warning { position: absolute; bottom: 25px; color: #ccc; font-size: 31px; font-weight: bold; text-align: center; width: 90%; }
-
-    /* 2. OEM Toyota Main UI */
-    .screen-bg {
-      width: 100vw; height: 100vh;
-      background: radial-gradient(circle, #2c2d35 0%, #121318 100%);
-      display: flex; flex-direction: column; padding: 10px 16px; position: relative;
-    }
-    .top-bar { height: 25px; display: flex; justify-content: flex-end; align-items: center; color: #fff; font-size: 15px; gap: 8px; }
-    .top-bar .time { font-weight: bold; margin-left: 5px; }
-    .content-area { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-top: 5px; }
-
-    /* Audio Card */
-    .audio-card {
-      height: 60%; background: linear-gradient(180deg, #7b4397 0%, #4a2364 100%);
-      border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2);
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 30px; position: relative; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
-    .card-top-title { position: absolute; top: 10px; right: 20px; font-size: 16px; display: flex; align-items: center; gap: 6px; }
-    .audio-left-info { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: left; direction: ltr; margin-top: -5px; }
-    .song-title { font-size: 52px; font-weight: bold; margin-bottom: 2px; line-height: 1.1; }
-    .song-artist { font-size: 30px; color: #eee; font-weight: bold; }
-    .song-album { font-size: 22px; color: #ccc; }
-    .audio-right-media { display: flex; align-items: center; gap: 20px; margin-top: -5px; }
-    .meta-icons { font-size: 26px; opacity: 0.9; display: flex; flex-direction: column; gap: 10px; text-align: center; }
-    .album-box { width: 155px; height: 155px; background: linear-gradient(135deg, #a88beb, #6e45e2); border-radius: 14px; display: flex; justify-content: center; align-items: center; font-size: 80px; box-shadow: 4px 4px 14px rgba(0,0,0,0.4); }
-
-    .audio-controls { position: absolute; bottom: 12px; width: calc(100% - 40px); display: flex; justify-content: space-between; align-items: center; font-size: 26px; opacity: 0.95; }
-    .control-btns-right, .control-btns-left { display: flex; gap: 24px; }
-
-    /* Bottom Grid */
-    .bottom-row { height: 33%; display: grid; grid-template-columns: 1fr 1fr 1fr 2.8fr; gap: 12px; align-items: center; }
-    .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
-    .theme-card { background: linear-gradient(180deg, #1d72b8 0%, #0f4c81 100%); padding: 8px 16px; align-items: flex-start; justify-content: space-between; position: relative; }
-    .theme-title { font-size: 14px; color: #fff; }
-    .theme-options { display: flex; gap: 18px; width: 100%; justify-content: center; align-items: center; flex: 1; margin-bottom: 5px; }
-    .theme-num { width: 80px; height: 62px; background: #111; border: 1px solid #444; display: flex; justify-content: center; align-items: center; font-size: 34px; font-weight: bold; border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,0.6); }
-    .theme-num.active { border: 3px solid #00ffcc; background: linear-gradient(180deg, #a88beb, #1d72b8); }
-    .phone-btn { background: linear-gradient(180deg, #62b327 0%, #3d7d11 100%); }
-    .carplay-btn { background: linear-gradient(180deg, #b8860b 0%, #7a5800 100%); }
-    .settings-btn { background: linear-gradient(180deg, #555 0%, #333 100%); }
-    .widget-icon { font-size: 34px; margin-bottom: 6px; }
-
-    .arrow-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-size: 16px; z-index: 5; }
-    .arrow-left { left: -12px; } .arrow-right { right: -12px; }
-    .dots-indicator { display: flex; justify-content: center; gap: 6px; position: absolute; bottom: -10px; width: 100%; }
-    .dot { width: 6px; height: 6px; background: #666; border-radius: 50%; }
-    .dot.active { background: #fff; }
-
-    /* 3. CarPlay Interface */
-    #carplay-screen {
-      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: linear-gradient(135deg, #103254 0%, #0d5d75 50%, #d47e1d 100%);
-      z-index: 80; display: flex; direction: ltr; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-    }
-    #carplay-screen.active { opacity: 1; pointer-events: auto; }
-
-    .cp-sidebar {
-      width: 75px; height: 100%; background: rgba(18, 20, 28, 0.75);
-      backdrop-filter: blur(15px); display: flex; flex-direction: column;
-      justify-content: space-between; align-items: center; padding: 12px 0; border-right: 1px solid rgba(255,255,255,0.1);
-    }
-    .cp-status { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; font-size: 11px; font-weight: 600; }
-    .cp-quick-apps { display: flex; flex-direction: column; gap: 14px; }
-    .cp-quick-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 22px; color: #fff; position: relative; }
-    .cp-home-btn { width: 38px; height: 38px; border: 2px solid #fff; border-radius: 8px; cursor: pointer; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; }
-    .cp-home-btn div { background: #fff; border-radius: 1px; }
-
-    .cp-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px 10px; padding: 25px 40px; align-items: center; justify-items: center; }
-    .cp-app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; position: relative; padding: 8px; border-radius: 18px; transition: transform 0.2s, box-shadow 0.2s; }
-    .cp-app-item.selected { transform: scale(1.1); box-shadow: 0 0 0 3px #00ffcc; background: rgba(255,255,255,0.15); }
-    .cp-app-icon { width: 72px; height: 72px; border-radius: 18px; display: flex; justify-content: center; align-items: center; font-size: 38px; color: #fff; box-shadow: 0 6px 15px rgba(0,0,0,0.3); position: relative; }
-    .cp-app-name { color: #fff; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-    .badge { position: absolute; top: -4px; right: -4px; background: #ff3b30; color: #fff; font-size: 12px; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #111; }
-
-    /* 4. Fullscreen YouTube Player Overlay */
-    #youtube-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 90; display: none; }
-    #youtube-screen.active { display: block; }
-    #yt-player { width: 100%; height: 100%; }
-    .yt-close-btn { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 15px; border-radius: 20px; z-index: 95; cursor: pointer; border: 1px solid #555; }
-
-    .hidden { opacity: 0; pointer-events: none; }
+    body { font-family: sans-serif; background: #111; color: #fff; text-align: center; padding-top: 50px; }
+    .pin-box { font-size: 40px; font-weight: bold; letter-spacing: 5px; color: #00ffcc; margin: 20px 0; }
+    .status { font-size: 18px; color: #aaa; }
   </style>
 </head>
-
 <body>
 
-  <!-- الباركود المنسدل -->
-  <div id="pair-banner">
-    <div id="qrcode"></div>
-    <div style="text-align: right;">
-      <div style="font-size: 14px; color: #aaa;">امسح الكود للتحكم من الجوال</div>
-      <div style="font-size: 22px; font-weight: bold;">PIN: <span id="pin-display" style="color:#00ffcc;">----</span></div>
-    </div>
-  </div>
-
-  <!-- Boot Screen -->
-  <div id="boot-screen">
-    <img src="U22211ntitled.png" alt="Toyota Logo">
-    <div class="boot-warning">تأكد مما يحيط بك لضمان السلامه أثناء عرض صور الكاميرا</div>
-  </div>
-
-  <!-- Toyota Main Screen -->
-  <div class="screen-bg">
-    <div class="top-bar">
-      <span>🌐</span><span>📶</span><span class="time" id="clock">4:27 AM</span>
-    </div>
-    <div class="content-area">
-      <div class="audio-card">
-        <div class="arrow-btn arrow-left">❮</div>
-        <div class="arrow-btn arrow-right">❯</div>
-        <div class="card-top-title"><span>صوتي Bluetooth</span><span>📡</span></div>
-        <div class="audio-left-info">
-          <div class="song-title">لؤي عدنان - اريدك</div>
-          <div class="song-artist">ميوزك الحنين</div>
-          <div class="song-album">Music Al Haneen</div>
-        </div>
-        <div class="audio-right-media">
-          <div class="meta-icons"><div>🎵</div><div>👤</div><div>💿</div></div>
-          <div class="album-box">🎵</div>
-        </div>
-        <div class="audio-controls">
-          <div class="control-btns-left"><span>⏮</span><span>▶</span><span>⏸</span><span>⏭</span></div>
-          <div class="control-btns-right"><span>🔁</span><span>🔀</span><span>📋</span></div>
-        </div>
-        <div class="dots-indicator"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
-      </div>
-
-      <div class="bottom-row">
-        <div class="widget-box settings-btn"><div class="widget-icon">⚙️</div><div>الإعدادات</div></div>
-        <div class="widget-box carplay-btn" onclick="openCarPlay()"><div class="widget-icon">▶</div><div style="font-size: 13px;">Apple CarPlay</div></div>
-        <div class="widget-box phone-btn"><div class="widget-icon">📞</div><div>هاتف</div></div>
-        <div class="widget-box theme-card">
-          <div class="theme-title">المظهر</div>
-          <div class="theme-options"><div class="theme-num active">1</div><div class="theme-num">2</div><div class="theme-num">3</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Apple CarPlay Screen -->
-  <div id="carplay-screen">
-    <div class="cp-sidebar">
-      <div class="cp-status"><span>10:51</span><span>5G 📶</span><span>🔋</span></div>
-      <div class="cp-quick-apps">
-        <div class="cp-quick-icon" style="background:#007aff;">✈️</div>
-        <div class="cp-quick-icon" style="background:#ff3b30;">🎙️</div>
-        <div class="cp-quick-icon" style="background:#34c759;">📞<div class="badge">2</div></div>
-      </div>
-      <div class="cp-home-btn" onclick="closeCarPlay()"><div></div><div></div><div></div><div></div></div>
-    </div>
-
-    <div class="cp-grid">
-      <div class="cp-app-item selected" data-index="0">
-        <div class="cp-app-icon" style="background: #34c759;">📞<div class="badge">2</div></div>
-        <span class="cp-app-name">Phone</span>
-      </div>
-      <div class="cp-app-item" data-index="1">
-        <div class="cp-app-icon" style="background: #ff2d55;">🎵<div class="badge">1</div></div>
-        <span class="cp-app-name">Music</span>
-      </div>
-      <div class="cp-app-item" data-index="2">
-        <div class="cp-app-icon" style="background: #fff; color: #007aff;">🗺️</div>
-        <span class="cp-app-name">Map</span>
-      </div>
-      <div class="cp-app-item" data-index="3">
-        <div class="cp-app-icon" style="background: #34c759;">💬</div>
-        <span class="cp-app-name">Message</span>
-      </div>
-      <div class="cp-app-item" data-index="4" onclick="openYoutube()">
-        <div class="cp-app-icon" style="background: #ff0000;">▶</div>
-        <span class="cp-app-name">YouTube</span>
-      </div>
-      <div class="cp-app-item" data-index="5">
-        <div class="cp-app-icon" style="background: #5ac8fa;">🏠</div>
-        <span class="cp-app-name">Auto</span>
-      </div>
-      <div class="cp-app-item" data-index="6">
-        <div class="cp-app-icon" style="background: #af52de;">🎙️</div>
-        <span class="cp-app-name">Podcasts</span>
-      </div>
-      <div class="cp-app-item" data-index="7">
-        <div class="cp-app-icon" style="background: #ff9500;">📖</div>
-        <span class="cp-app-name">Audiolibros</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- YouTube Overlay -->
-  <div id="youtube-screen">
-    <div class="yt-close-btn" onclick="closeYoutube()">إغلاق ✕</div>
-    <div id="yt-player"></div>
-  </div>
+  <h1>شاشة الكامري</h1>
+  <p class="status">رمز الاقتران الخاص بك:</p>
+  <div id="pinDisplay" class="pin-box">جاري الجلب...</div>
 
   <script>
-    // استبدل io() القديمة بهذا السطر وضع رابط موقعك
-const socket = io("https://MS2141.onrender.com");
-    let player;
-    let selectedIndex = 0;
-    const totalApps = 8;
+    // الاتصال التلقائي بنفس السيرفر المستضيف
+    const socket = io();
 
-    setTimeout(() => document.getElementById('boot-screen').classList.add('hidden'), 3500);
-
-    function updateClock() {
-      const now = new Date();
-      let hours = now.getHours() % 12 || 12;
-      let minutes = now.getMinutes().toString().padStart(2, '0');
-      document.getElementById('clock').innerText = `${hours}:${minutes} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
-    }
-    setInterval(updateClock, 1000); updateClock();
-
+    // تسجيل الشاشة واستلام الـ PIN
     socket.emit('registerScreen');
+
     socket.on('screenRegistered', (data) => {
-      document.getElementById('pin-display').innerText = data.pin;
-      const remoteUrl = `${window.location.origin}/remote.html?pin=${data.pin}`;
-      
-      document.getElementById('qrcode').innerHTML = '';
-      new QRCode(document.getElementById('qrcode'), { text: remoteUrl, width: 85, height: 85 });
-
-      const banner = document.getElementById('pair-banner');
-      banner.classList.add('show');
-      setTimeout(() => banner.classList.remove('show'), 5000);
+      document.getElementById('pinDisplay').innerText = data.pin;
     });
 
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('yt-player', {
-        height: '100%', width: '100%', playerVars: { 'autoplay': 1, 'controls': 1 }
-      });
-    }
-
-    function openCarPlay() { document.getElementById('carplay-screen').classList.add('active'); }
-    function closeCarPlay() { document.getElementById('carplay-screen').classList.remove('active'); }
-    function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
-    function closeYoutube() { 
-      document.getElementById('youtube-screen').classList.remove('active'); 
-      if(player && player.stopVideo) player.stopVideo();
-    }
-
-    socket.on('stateUpdate', (state) => {
-      if (state.currentApp === 'carplay') openCarPlay();
-      if (state.currentApp === 'home') { closeCarPlay(); closeYoutube(); }
-      if (state.currentApp === 'youtube') {
-        openYoutube();
-        if (player && player.loadVideoById) player.loadVideoById(state.youtubeId);
-      }
+    // استقبال الأوامر القادمة من الريموت
+    socket.on('stateUpdate', (data) => {
+      console.log('تم استقبال حالة جديدة:', data);
     });
 
-    // التنقل بالأسهم داخل CarPlay
     socket.on('remoteNavigate', (dir) => {
-      const items = document.querySelectorAll('.cp-app-item');
-      items[selectedIndex].classList.remove('selected');
-
-      if (dir === 'right' && selectedIndex < totalApps - 1) selectedIndex++;
-      if (dir === 'left' && selectedIndex > 0) selectedIndex--;
-      if (dir === 'down' && selectedIndex + 4 < totalApps) selectedIndex += 4;
-      if (dir === 'up' && selectedIndex - 4 >= 0) selectedIndex -= 4;
-
-      items[selectedIndex].classList.add('selected');
-
-      if (dir === 'select') {
-        if (selectedIndex === 4) openYoutube();
-      }
+      console.log('تم استقبال أمر توجيه:', dir);
     });
   </script>
 </body>
