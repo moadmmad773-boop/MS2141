@@ -3,69 +3,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ريموت التحكم</title>
+  <title>Camry Screen System</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; background: #222; color: #fff; text-align: center; padding: 20px; }
-    input { font-size: 24px; text-align: center; width: 150px; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
-    button { font-size: 18px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; }
-    .nav-btn { font-size: 16px; padding: 15px; margin: 5px; background: #007bff; width: 80px; }
-    #remoteControl { display: none; margin-top: 30px; }
+    :root {
+      --bg-color: #0b0e14;
+      --card-bg: #151922;
+      --accent-color: #00e5ff;
+      --text-color: #ffffff;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 250px;
+      background: var(--card-bg);
+      border-left: 1px solid #222c3c;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+    .sidebar h2 { color: var(--accent-color); margin-bottom: 30px; font-size: 22px; }
+    .menu-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: #1c222e;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .menu-item.active {
+      background: var(--accent-color);
+      color: #000;
+      font-weight: bold;
+    }
+    .main-content {
+      flex: 1;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .pin-card {
+      background: var(--card-bg);
+      padding: 20px 40px;
+      border-radius: 15px;
+      border: 2px solid var(--accent-color);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .pin-code {
+      font-size: 48px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      color: var(--accent-color);
+      margin-top: 10px;
+    }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      width: 100%;
+      max-width: 600px;
+    }
+    .dash-card {
+      background: var(--card-bg);
+      padding: 25px;
+      border-radius: 15px;
+      text-align: center;
+      font-size: 20px;
+    }
+    .dash-value { font-size: 36px; font-weight: bold; color: var(--accent-color); margin-top: 10px; }
   </style>
 </head>
 <body>
 
-  <!-- شاشة إدخال الـ PIN -->
-  <div id="pinScreen">
-    <h2>ادخل رمز PIN الظاهر على الشاشة</h2>
-    <input type="number" id="pinInput" placeholder="1234">
-    <br>
-    <button id="connectBtn">اتصال</button>
+  <div class="sidebar">
+    <h2>نظام الكامري</h2>
+    <div id="m-dash" class="menu-item active">لوحة القيادة</div>
+    <div id="m-media" class="menu-item">الوسائط</div>
+    <div id="m-settings" class="menu-item">الإعدادات</div>
   </div>
 
-  <!-- واجهة الريموت بعد الاتصال -->
-  <div id="remoteControl">
-    <h3>تم الاتصال بنجاح!</h3>
-    <div>
-      <button class="nav-btn" onclick="sendNav('UP')">فوق</button><br>
-      <button class="nav-btn" onclick="sendNav('LEFT')">يسار</button>
-      <button class="nav-btn" onclick="sendNav('RIGHT')">يمين</button><br>
-      <button class="nav-btn" onclick="sendNav('DOWN')">تحت</button>
+  <div class="main-content">
+    <div class="pin-card">
+      <div>رمز اقتران الجوال (PIN)</div>
+      <div id="pinDisplay" class="pin-code">----</div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="dash-card">
+        السرعة
+        <div id="speedVal" class="dash-value">0 km/h</div>
+      </div>
+      <div class="dash-card">
+        الحالة
+        <div id="statusVal" class="dash-value">متصل</div>
+      </div>
     </div>
   </div>
 
   <script>
     const socket = io();
 
-    const connectBtn = document.getElementById('connectBtn');
-    const pinInput = document.getElementById('pinInput');
-    const pinScreen = document.getElementById('pinScreen');
-    const remoteControl = document.getElementById('remoteControl');
+    socket.emit('registerScreen');
 
-    // عند الضغط على زر الاتصال
-    connectBtn.addEventListener('click', () => {
-      const pin = pinInput.value.trim();
-      if (!pin) {
-        alert("يرجى كتابة الرمز أولاً!");
-        return;
-      }
-      socket.emit('verifyPin', pin);
+    socket.on('screenRegistered', (data) => {
+      document.getElementById('pinDisplay').innerText = data.pin;
     });
 
-    // استقبال رد السيرفر بعد التحقق
-    socket.on('pinVerified', (data) => {
-      if (data.success) {
-        pinScreen.style.display = 'none';
-        remoteControl.style.display = 'block';
-      } else {
-        alert('رمز الـ PIN غير صحيح!');
+    socket.on('stateUpdate', (data) => {
+      if (data.speed !== undefined) {
+        document.getElementById('speedVal').innerText = data.speed + ' km/h';
       }
     });
 
-    // إرسال أوامر التحكم
-    function sendNav(dir) {
-      socket.emit('navigate', dir);
-    }
+    socket.on('remoteNavigate', (dir) => {
+      const items = ['m-dash', 'm-media', 'm-settings'];
+      let activeIdx = items.findIndex(id => document.getElementById(id).classList.contains('active'));
+      
+      document.getElementById(items[activeIdx]).classList.remove('active');
+      
+      if (dir === 'DOWN') activeIdx = (activeIdx + 1) % items.length;
+      if (dir === 'UP') activeIdx = (activeIdx - 1 + items.length) % items.length;
+      
+      document.getElementById(items[activeIdx]).classList.add('active');
+    });
   </script>
 </body>
 </html>
