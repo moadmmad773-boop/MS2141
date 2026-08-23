@@ -10,44 +10,63 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// تقديم جميع ملفات مجلد public بما فيها remote.html
 app.use(express.static(path.join(__dirname, 'public')));
 
-let currentPin = "1234"; // pin افتراضي لسرعة الربط بدون تعليق
+// قائمة بحفظ الـ PIN الخا بالاتصال
+const activeRooms = new Map();
+
+function generatePin() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
 
 io.on('connection', (socket) => {
-  
-  // عند فتح الشاشة
+
+  // تسجيل الشاشة وإنشاء PIN
   socket.on('registerScreen', () => {
-    currentPin = Math.floor(1000 + Math.random() * 9000).toString();
-    socket.emit('screenRegistered', { pin: currentPin });
+    const pin = generatePin();
+    socket.join(pin);
+    activeRooms.set(socket.id, pin);
+    socket.emit('screenRegistered', { pin });
   });
 
-  // عند إرسال الرمز من الجوال
-  socket.on('verifyPin', (pin) => {
-    if (pin === currentPin) {
-      socket.emit('pinVerified', { success: true });
+  // انضمام الريموت عبر الـ PIN
+  socket.on('joinRoom', (pin) => {
+    const rooms = Array.from(io.sockets.adapter.rooms.keys());
+    if (rooms.includes(pin)) {
+      socket.join(pin);
+      socket.emit('joinStatus', { success: true, message: 'تم الاتصال بنجاح!' });
     } else {
-      socket.emit('pinVerified', { success: false });
+      socket.emit('joinStatus', { success: false, message: 'رمز الـ PIN غير صحيح أو غير موجود!' });
     }
   });
 
-  // بث الأوامر فوراً لجميع المتصلين بدون تأخير
-  socket.on('changeState', (data) => {
-    io.emit('stateUpdate', data);
+  // التنقل بالأسهم
+  socket.on('navigate', (data) => {
+    io.to(data.pin).emit('remoteNavigate', data.dir);
   });
 
-  socket.on('navigate', (dir) => {
-    io.emit('remoteNavigate', dir);
+  // فتح التطبيقات (CarPlay / Home)
+  socket.on('openApp', (data) => {
+    io.to(data.pin).emit('stateUpdate', { currentApp: data.appName });
+  });
+
+  // تشغيل فيديو يوتيوب
+  socket.on('playYoutube', (data) => {
+    io.to(data.pin).emit('stateUpdate', { 
+      currentApp: 'youtube', 
+      youtubeId: data.videoId 
+    });
+  });
+
+  socket.on('disconnect', () => {
+    activeRooms.delete(socket.id);
   });
 });
 
-// فتح صفحة الريموت مباشرة عند طلب /remote
 app.get('/remote', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'remote.html'));
 });
 
-// فتح الشاشة الرئيسية لأي مسار آخر
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
