@@ -3,68 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ريموت التحكم</title>
+  <title>ريموت الكامري</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; background: #222; color: #fff; text-align: center; padding: 20px; }
-    input { font-size: 24px; text-align: center; width: 150px; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
-    button { font-size: 18px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; }
-    .nav-btn { font-size: 16px; padding: 15px; margin: 5px; background: #007bff; width: 80px; }
-    #remoteControl { display: none; margin-top: 30px; }
+    body {
+      background-color: #0f1218;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .auth-box {
+      background: #1a202c;
+      padding: 25px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 350px;
+      text-align: center;
+      margin-top: 50px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    input {
+      width: 80%;
+      padding: 12px;
+      font-size: 22px;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #00e5ff;
+      margin: 15px 0;
+    }
+    button {
+      width: 90%;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: none;
+      background: #00e5ff;
+      color: #000;
+      cursor: pointer;
+    }
+    .remote-panel {
+      display: none;
+      width: 100%;
+      max-width: 400px;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 30px 0;
+    }
+    .dpad-btn {
+      background: #1e293b;
+      color: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .dpad-btn:active { background: #00e5ff; color: #000; }
   </style>
 </head>
 <body>
 
-  <!-- شاشة إدخال الـ PIN -->
-  <div id="pinScreen">
-    <h2>ادخل رمز PIN الظاهر على الشاشة</h2>
+  <!-- شاشة الـ PIN -->
+  <div id="pinScreen" class="auth-box">
+    <h2>الربط بشاشة السيارة</h2>
+    <p style="color: #94a3b8;">أدخل الرمز الظاهر على الشاشة</p>
     <input type="number" id="pinInput" placeholder="1234">
-    <br>
     <button id="connectBtn">اتصال</button>
   </div>
 
-  <!-- واجهة الريموت بعد الاتصال -->
-  <div id="remoteControl">
-    <h3>تم الاتصال بنجاح!</h3>
-    <div>
-      <button class="nav-btn" onclick="sendNav('UP')">فوق</button><br>
-      <button class="nav-btn" onclick="sendNav('LEFT')">يسار</button>
-      <button class="nav-btn" onclick="sendNav('RIGHT')">يمين</button><br>
-      <button class="nav-btn" onclick="sendNav('DOWN')">تحت</button>
+  <!-- لوحة التحكم بالريموت -->
+  <div id="remoteControl" class="remote-panel">
+    <h3 style="text-align: center; color: #00e5ff;">قائمة التحكم المباشر</h3>
+    
+    <div class="dpad">
+      <div></div>
+      <button class="dpad-btn" onclick="sendNav('UP')">▲</button>
+      <div></div>
+      <button class="dpad-btn" onclick="sendNav('LEFT')">◄</button>
+      <button class="dpad-btn" onclick="sendNav('OK')">OK</button>
+      <button class="dpad-btn" onclick="sendNav('RIGHT')">►</button>
+      <div></div>
+      <button class="dpad-btn" onclick="sendNav('DOWN')">▼</button>
+      <div></div>
     </div>
+
+    <button onclick="setSpeed(80)" style="background: #334155; color: #fff; margin-bottom: 10px;">ضبط السرعة 80 km/h</button>
+    <button onclick="setSpeed(0)" style="background: #ef4444; color: #fff;">إيقاف السيارة</button>
   </div>
 
   <script>
     const socket = io();
 
-    const connectBtn = document.getElementById('connectBtn');
-    const pinInput = document.getElementById('pinInput');
-    const pinScreen = document.getElementById('pinScreen');
-    const remoteControl = document.getElementById('remoteControl');
-
-    // عند الضغط على زر الاتصال
-    connectBtn.addEventListener('click', () => {
-      const pin = pinInput.value.trim();
-      if (!pin) {
-        alert("يرجى كتابة الرمز أولاً!");
-        return;
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      const pin = document.getElementById('pinInput').value.trim();
+      if (pin) {
+        socket.emit('verifyPin', pin);
       }
-      socket.emit('verifyPin', pin);
     });
 
-    // استقبال رد السيرفر بعد التحقق
     socket.on('pinVerified', (data) => {
       if (data.success) {
-        pinScreen.style.display = 'none';
-        remoteControl.style.display = 'block';
+        document.getElementById('pinScreen').style.display = 'none';
+        document.getElementById('remoteControl').style.display = 'block';
       } else {
-        alert('رمز الـ PIN غير صحيح!');
+        alert('رمز PIN غير صحيح، تأكد من الرقم على الشاشة');
       }
     });
 
-    // إرسال أوامر التحكم
     function sendNav(dir) {
       socket.emit('navigate', dir);
+    }
+
+    function setSpeed(val) {
+      socket.emit('changeState', { speed: val });
     }
   </script>
 </body>
