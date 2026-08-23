@@ -11,6 +11,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; user-select: none; }
     body, html { width: 100vw; height: 100vh; overflow: hidden; background-color: #000; }
 
+    /* بانر الباركود المنسدل */
     #pair-banner {
       position: absolute; top: -180px; left: 50%; transform: translateX(-50%);
       background: rgba(18, 19, 24, 0.95); border: 2px solid #00ffcc; border-radius: 16px;
@@ -20,6 +21,7 @@
     #pair-banner.show { top: 15px; }
     #qrcode img { border-radius: 8px; border: 2px solid #fff; }
 
+    /* 1. Toyota Boot Screen */
     #boot-screen {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background-color: #000; z-index: 99; display: flex; flex-direction: column;
@@ -28,6 +30,7 @@
     #boot-screen img { max-width: 42%; height: auto; }
     .boot-warning { position: absolute; bottom: 25px; color: #ccc; font-size: 31px; font-weight: bold; text-align: center; width: 90%; }
 
+    /* 2. OEM Toyota Main UI */
     .screen-bg {
       width: 100vw; height: 100vh;
       background: radial-gradient(circle, #2c2d35 0%, #121318 100%);
@@ -37,6 +40,7 @@
     .top-bar .time { font-weight: bold; margin-left: 5px; }
     .content-area { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-top: 5px; }
 
+    /* Audio Card */
     .audio-card {
       height: 60%; background: linear-gradient(180deg, #7b4397 0%, #4a2364 100%);
       border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2);
@@ -55,6 +59,7 @@
     .audio-controls { position: absolute; bottom: 12px; width: calc(100% - 40px); display: flex; justify-content: space-between; align-items: center; font-size: 26px; opacity: 0.95; }
     .control-btns-right, .control-btns-left { display: flex; gap: 24px; }
 
+    /* Bottom Grid */
     .bottom-row { height: 33%; display: grid; grid-template-columns: 1fr 1fr 1fr 2.8fr; gap: 12px; align-items: center; }
     .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
     .theme-card { background: linear-gradient(180deg, #1d72b8 0%, #0f4c81 100%); padding: 8px 16px; align-items: flex-start; justify-content: space-between; position: relative; }
@@ -73,6 +78,7 @@
     .dot { width: 6px; height: 6px; background: #666; border-radius: 50%; }
     .dot.active { background: #fff; }
 
+    /* 3. CarPlay Interface */
     #carplay-screen {
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: linear-gradient(135deg, #103254 0%, #0d5d75 50%, #d47e1d 100%);
@@ -98,6 +104,7 @@
     .cp-app-name { color: #fff; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
     .badge { position: absolute; top: -4px; right: -4px; background: #ff3b30; color: #fff; font-size: 12px; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #111; }
 
+    /* 4. Fullscreen YouTube Player Overlay */
     #youtube-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 90; display: none; }
     #youtube-screen.active { display: block; }
     #yt-player { width: 100%; height: 100%; }
@@ -109,6 +116,7 @@
 
 <body>
 
+  <!-- الباركود المنسدل -->
   <div id="pair-banner">
     <div id="qrcode"></div>
     <div style="text-align: right;">
@@ -117,11 +125,13 @@
     </div>
   </div>
 
+  <!-- Boot Screen -->
   <div id="boot-screen">
-    <img src="U22211ntitled.png" alt="Toyota Logo" onerror="this.style.display='none'">
+    <img src="U22211ntitled.png" alt="Toyota Logo">
     <div class="boot-warning">تأكد مما يحيط بك لضمان السلامه أثناء عرض صور الكاميرا</div>
   </div>
 
+  <!-- Toyota Main Screen -->
   <div class="screen-bg">
     <div class="top-bar">
       <span>🌐</span><span>📶</span><span class="time" id="clock">4:27 AM</span>
@@ -159,6 +169,7 @@
     </div>
   </div>
 
+  <!-- Apple CarPlay Screen -->
   <div id="carplay-screen">
     <div class="cp-sidebar">
       <div class="cp-status"><span>10:51</span><span>5G 📶</span><span>🔋</span></div>
@@ -206,6 +217,7 @@
     </div>
   </div>
 
+  <!-- YouTube Overlay -->
   <div id="youtube-screen">
     <div class="yt-close-btn" onclick="closeYoutube()">إغلاق ✕</div>
     <div id="yt-player"></div>
@@ -217,10 +229,7 @@
     let selectedIndex = 0;
     const totalApps = 8;
 
-    setTimeout(() => {
-      const boot = document.getElementById('boot-screen');
-      if (boot) boot.classList.add('hidden');
-    }, 3500);
+    setTimeout(() => document.getElementById('boot-screen').classList.add('hidden'), 3500);
 
     function updateClock() {
       const now = new Date();
@@ -240,7 +249,7 @@
 
       const banner = document.getElementById('pair-banner');
       banner.classList.add('show');
-      setTimeout(() => banner.classList.remove('show'), 6000);
+      setTimeout(() => banner.classList.remove('show'), 5000);
     });
 
     function onYouTubeIframeAPIReady() {
@@ -266,6 +275,7 @@
       }
     });
 
+    // التنقل بالأسهم داخل CarPlay
     socket.on('remoteNavigate', (dir) => {
       const items = document.querySelectorAll('.cp-app-item');
       items[selectedIndex].classList.remove('selected');
