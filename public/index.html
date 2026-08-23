@@ -5,7 +5,6 @@
   <title>Toyota Interactive Screen</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; user-select: none; }
@@ -107,7 +106,8 @@
     /* 4. Fullscreen YouTube Player Overlay */
     #youtube-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 90; display: none; }
     #youtube-screen.active { display: block; }
-    #yt-player { width: 100%; height: 100%; }
+    #yt-player-container { width: 100%; height: 100%; }
+    #yt-player-container iframe { width: 100%; height: 100%; border: none; }
     .yt-close-btn { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 15px; border-radius: 20px; z-index: 95; cursor: pointer; border: 1px solid #555; }
 
     .hidden { opacity: 0; pointer-events: none; }
@@ -220,12 +220,11 @@
   <!-- YouTube Overlay -->
   <div id="youtube-screen">
     <div class="yt-close-btn" onclick="closeYoutube()">إغلاق ✕</div>
-    <div id="yt-player"></div>
+    <div id="yt-player-container"></div>
   </div>
 
   <script>
     const socket = io();
-    let player;
     let selectedIndex = 0;
     const totalApps = 8;
 
@@ -252,49 +251,32 @@
       setTimeout(() => banner.classList.remove('show'), 5000);
     });
 
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('yt-player', {
-        height: '100%', 
-        width: '100%', 
-        playerVars: { 
-          'autoplay': 1, 
-          'controls': 1,
-          'enablejsapi': 1,
-          'origin': window.location.origin
-        },
-        events: {
-          'onReady': (event) => {
-            event.target.mute();
-          }
-        }
-      });
-    }
-
     function openCarPlay() { document.getElementById('carplay-screen').classList.add('active'); }
     function closeCarPlay() { document.getElementById('carplay-screen').classList.remove('active'); }
     function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
+    
     function closeYoutube() { 
       document.getElementById('youtube-screen').classList.remove('active'); 
-      if(player && player.stopVideo) player.stopVideo();
+      document.getElementById('yt-player-container').innerHTML = '';
     }
 
+    // بناء مشغل الفيديو وبدء التجميع الفوري
+    function playVideoDirect(videoId) {
+      openYoutube();
+      const container = document.getElementById('yt-player-container');
+      container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    }
+
+    // استقبال الأوامر العامة
     socket.on('stateUpdate', (state) => {
       if (state.currentApp === 'carplay') openCarPlay();
       if (state.currentApp === 'home') { closeCarPlay(); closeYoutube(); }
-      if (state.currentApp === 'youtube') {
-        openYoutube();
-        
-        if (player && player.loadVideoById) {
-          player.loadVideoById(state.youtubeId);
-          player.playVideo();
-          setTimeout(() => {
-            player.unMute();
-          }, 500);
-        }
+      if (state.currentApp === 'youtube' && state.youtubeId) {
+        playVideoDirect(state.youtubeId);
       }
     });
 
-    // التنقل بالأسهم داخل CarPlay
+    // التنقل بالأسهم والأوامر الإضافية
     socket.on('remoteNavigate', (dir) => {
       const items = document.querySelectorAll('.cp-app-item');
       items[selectedIndex].classList.remove('selected');
