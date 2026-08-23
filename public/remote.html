@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Remote Control</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
+    input, button { padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; }
+    input { width: 90%; background: #222; color: #fff; text-align: center; border: 1px solid #444; }
+    button { background: #00ffcc; color: #000; font-weight: bold; width: 90%; cursor: pointer; }
+    .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 220px; margin: 20px auto; }
+    .dpad-btn { background: #333; color: #fff; padding: 15px; border-radius: 8px; font-weight: bold; user-select: none; }
+  </style>
+</head>
+<body>
+
+  <h2>الربط بشاشة السيارة 🚗</h2>
+  
+  <div id="login-sec">
+    <input id="pin-input" type="text" placeholder="أدخل رمز الـ PIN"/>
+    <button onclick="connect()">اتصال بالسيارة 🔗</button>
+  </div>
+
+  <div id="control-sec" style="display:none;">
+    
+    <!-- قسم وضع رابط يوتيوب مباشر -->
+    <div style="background: #222; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+      <h3 style="margin-bottom:10px; font-size:16px; color:#aaa;">تشغيل رابط مباشر</h3>
+      <input id="yt-url" type="text" placeholder="الصق رابط فيديو YouTube هنا"/>
+      <button style="background:#ff0000; color:#fff;" onclick="playYT()">تشغيل الفيديو 🚀</button>
+    </div>
+
+    <hr style="border-color:#333; margin:15px 0;">
+
+    <!-- أزرار التحكم بالأسهم -->
+    <div class="dpad">
+      <div></div><div class="dpad-btn" onclick="nav('up')">▲</div><div></div>
+      <div class="dpad-btn" onclick="nav('left')">◀</div><div class="dpad-btn" style="background:#ff2d55;" onclick="nav('select')">OK</div><div class="dpad-btn" onclick="nav('right')">▶</div>
+      <div></div><div class="dpad-btn" onclick="nav('down')">▼</div><div></div>
+    </div>
+
+    <button style="background:#b8860b; color:#fff;" onclick="openApp('carplay')">فتح CarPlay</button>
+    <button style="background:#555; color:#fff; margin-top:8px;" onclick="openApp('home')">الرئيسية</button>
+  </div>
+
+  <script>
+    const socket = io();
+    let myPin = '';
+
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pinParam = urlParams.get('pin');
+      if (pinParam) {
+        document.getElementById('pin-input').value = pinParam;
+        connect();
+      }
+    };
+
+    function connect() {
+      myPin = document.getElementById('pin-input').value;
+      if(myPin) socket.emit('joinRoom', myPin);
+    }
+
+    socket.on('joinStatus', (res) => {
+      if (res.success) {
+        document.getElementById('login-sec').style.display = 'none';
+        document.getElementById('control-sec').style.display = 'block';
+      } else {
+        alert(res.message);
+      }
+    });
+
+    function nav(dir) { socket.emit('navigate', { pin: myPin, dir }); }
+    function openApp(appName) { socket.emit('openApp', { pin: myPin, appName }); }
+    
+    function playYT() {
+      const url = document.getElementById('yt-url').value;
+      if (!url) return;
+      let regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      let match = url.match(regExp);
+      let videoId = (match && match[2].length == 11) ? match[2] : url;
+      socket.emit('playYoutube', { pin: myPin, videoId });
+    }
+  </script>
+</body>
+</html>
