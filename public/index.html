@@ -5,7 +5,6 @@
   <title>Toyota Car Screen</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; user-select: none; }
@@ -67,12 +66,6 @@
     .settings-btn { background: linear-gradient(180deg, #555 0%, #333 100%); }
     .widget-icon { font-size: 34px; margin-bottom: 6px; }
 
-    .arrow-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-size: 16px; z-index: 5; }
-    .arrow-left { left: -12px; } .arrow-right { right: -12px; }
-    .dots-indicator { display: flex; justify-content: center; gap: 6px; position: absolute; bottom: -10px; width: 100%; }
-    .dot { width: 6px; height: 6px; background: #666; border-radius: 50%; }
-    .dot.active { background: #fff; }
-
     #carplay-screen {
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: linear-gradient(135deg, #103254 0%, #0d5d75 50%, #d47e1d 100%);
@@ -98,9 +91,10 @@
     .cp-app-name { color: #fff; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
     .badge { position: absolute; top: -4px; right: -4px; background: #ff3b30; color: #fff; font-size: 12px; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #111; }
 
+    /* مشغل الميديا المباشر HTML5 */
     #youtube-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 90; display: none; }
     #youtube-screen.active { display: block; }
-    #yt-player { width: 100%; height: 100%; }
+    #direct-video { width: 100%; height: 100%; object-fit: contain; }
 
     .hidden { opacity: 0; pointer-events: none; }
   </style>
@@ -127,8 +121,6 @@
     </div>
     <div class="content-area">
       <div class="audio-card">
-        <div class="arrow-btn arrow-left">❮</div>
-        <div class="arrow-btn arrow-right">❯</div>
         <div class="card-top-title"><span>صوتي Bluetooth</span><span>📡</span></div>
         <div class="audio-left-info">
           <div class="song-title">لؤي عدنان - اريدك</div>
@@ -143,7 +135,6 @@
           <div class="control-btns-left"><span>⏮</span><span>▶</span><span>⏸</span><span>⏭</span></div>
           <div class="control-btns-right"><span>🔁</span><span>🔀</span><span>📋</span></div>
         </div>
-        <div class="dots-indicator"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
       </div>
 
       <div class="bottom-row">
@@ -205,13 +196,14 @@
     </div>
   </div>
 
+  <!-- HTML5 Native Video Tag -->
   <div id="youtube-screen">
-    <div id="yt-player"></div>
+    <video id="direct-video" autoplay controls playsinline></video>
   </div>
 
   <script>
     const socket = io();
-    let player = null;
+    const videoElement = document.getElementById('direct-video');
     let selectedIndex = 0;
     const totalApps = 8;
 
@@ -229,7 +221,6 @@
     socket.on('screenRegistered', (data) => {
       document.getElementById('pin-display').innerText = data.pin;
       const remoteUrl = `${window.location.origin}/remote.html?pin=${data.pin}`;
-      
       document.getElementById('qrcode').innerHTML = '';
       new QRCode(document.getElementById('qrcode'), { text: remoteUrl, width: 85, height: 85 });
 
@@ -238,55 +229,63 @@
       setTimeout(() => banner.classList.remove('show'), 5000);
     });
 
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('yt-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          'autoplay': 1,
-          'controls': 1,
-          'playsinline': 1,
-          'rel': 0
-        }
-      });
-    }
-
     function openCarPlay() { document.getElementById('carplay-screen').classList.add('active'); }
     function closeCarPlay() { document.getElementById('carplay-screen').classList.remove('active'); }
     function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
     function closeYoutube() { 
       document.getElementById('youtube-screen').classList.remove('active'); 
-      if (player && player.stopVideo) player.stopVideo();
+      videoElement.pause();
+      videoElement.src = '';
     }
 
-    function triggerPlayVideo(vid) {
+    // جلب رابط البث المباشر المفتوح عن طريق Invidious API لفك قيود يوتيوب
+    async function playDirectStream(videoId) {
       openYoutube();
-      if (player && player.loadVideoById) {
-        player.loadVideoById(vid);
-        player.playVideo();
+      try {
+        const response = await fetch(`https://invidious.nerdvpn.de/api/v1/videos/${videoId}`);
+        const data = await response.json();
+        
+        // البحث عن أفضل صيغة فيديو وصوت مدمجة
+        const format = data.formatStreams.find(f => f.qualityLabel === '720p') || data.formatStreams[0];
+        
+        if (format && format.url) {
+          videoElement.src = format.url;
+          
+          // البدء بدون كتم، وإن رفض المتصفح يتم البدء مكتوماً ثم يفك تلقائياً
+          let playPromise = videoElement.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              videoElement.muted = true;
+              videoElement.play().then(() => {
+                setTimeout(() => { videoElement.muted = false; }, 500);
+              });
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching stream:", err);
       }
     }
 
     socket.on('playYoutube', (data) => {
       const vId = typeof data === 'string' ? data : data.videoId;
-      if (vId) triggerPlayVideo(vId);
+      if (vId) playDirectStream(vId);
     });
 
     socket.on('stateUpdate', (state) => {
       if (state.currentApp === 'carplay') openCarPlay();
       if (state.currentApp === 'home') { closeCarPlay(); closeYoutube(); }
       if (state.currentApp === 'youtube' && state.youtubeId) {
-        triggerPlayVideo(state.youtubeId);
+        playDirectStream(state.youtubeId);
       }
     });
 
     socket.on('remoteNavigate', (dir) => {
       const ytScreen = document.getElementById('youtube-screen');
       if (ytScreen.classList.contains('active')) {
-        if (dir === 'select' && player) {
-          const state = player.getPlayerState();
-          if (state === YT.PlayerState.PLAYING) player.pauseVideo();
-          else player.playVideo();
+        if (dir === 'select') {
+          if (videoElement.paused) videoElement.play();
+          else videoElement.pause();
         }
         return;
       }
