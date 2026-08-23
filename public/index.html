@@ -2,15 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
-  <title>Toyota Interactive Screen</title>
+  <title>Toyota Car Screen</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; user-select: none; }
     body, html { width: 100vw; height: 100vh; overflow: hidden; background-color: #000; }
 
-    /* بانر الباركود المنسدل */
     #pair-banner {
       position: absolute; top: -180px; left: 50%; transform: translateX(-50%);
       background: rgba(18, 19, 24, 0.95); border: 2px solid #00ffcc; border-radius: 16px;
@@ -20,7 +20,6 @@
     #pair-banner.show { top: 15px; }
     #qrcode img { border-radius: 8px; border: 2px solid #fff; }
 
-    /* 1. Toyota Boot Screen */
     #boot-screen {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background-color: #000; z-index: 99; display: flex; flex-direction: column;
@@ -29,7 +28,6 @@
     #boot-screen img { max-width: 42%; height: auto; }
     .boot-warning { position: absolute; bottom: 25px; color: #ccc; font-size: 31px; font-weight: bold; text-align: center; width: 90%; }
 
-    /* 2. OEM Toyota Main UI */
     .screen-bg {
       width: 100vw; height: 100vh;
       background: radial-gradient(circle, #2c2d35 0%, #121318 100%);
@@ -39,7 +37,6 @@
     .top-bar .time { font-weight: bold; margin-left: 5px; }
     .content-area { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-top: 5px; }
 
-    /* Audio Card */
     .audio-card {
       height: 60%; background: linear-gradient(180deg, #7b4397 0%, #4a2364 100%);
       border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2);
@@ -58,9 +55,8 @@
     .audio-controls { position: absolute; bottom: 12px; width: calc(100% - 40px); display: flex; justify-content: space-between; align-items: center; font-size: 26px; opacity: 0.95; }
     .control-btns-right, .control-btns-left { display: flex; gap: 24px; }
 
-    /* Bottom Grid */
     .bottom-row { height: 33%; display: grid; grid-template-columns: 1fr 1fr 1fr 2.8fr; gap: 12px; align-items: center; }
-    .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+    .widget-box { height: 100%; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; font-size: 16px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
     .theme-card { background: linear-gradient(180deg, #1d72b8 0%, #0f4c81 100%); padding: 8px 16px; align-items: flex-start; justify-content: space-between; position: relative; }
     .theme-title { font-size: 14px; color: #fff; }
     .theme-options { display: flex; gap: 18px; width: 100%; justify-content: center; align-items: center; flex: 1; margin-bottom: 5px; }
@@ -77,7 +73,6 @@
     .dot { width: 6px; height: 6px; background: #666; border-radius: 50%; }
     .dot.active { background: #fff; }
 
-    /* 3. CarPlay Interface */
     #carplay-screen {
       position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
       background: linear-gradient(135deg, #103254 0%, #0d5d75 50%, #d47e1d 100%);
@@ -93,22 +88,19 @@
     .cp-status { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; font-size: 11px; font-weight: 600; }
     .cp-quick-apps { display: flex; flex-direction: column; gap: 14px; }
     .cp-quick-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 22px; color: #fff; position: relative; }
-    .cp-home-btn { width: 38px; height: 38px; border: 2px solid #fff; border-radius: 8px; cursor: pointer; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; }
+    .cp-home-btn { width: 38px; height: 38px; border: 2px solid #fff; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px; }
     .cp-home-btn div { background: #fff; border-radius: 1px; }
 
     .cp-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px 10px; padding: 25px 40px; align-items: center; justify-items: center; }
-    .cp-app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; position: relative; padding: 8px; border-radius: 18px; transition: transform 0.2s, box-shadow 0.2s; }
+    .cp-app-item { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; padding: 8px; border-radius: 18px; transition: transform 0.2s, box-shadow 0.2s; }
     .cp-app-item.selected { transform: scale(1.1); box-shadow: 0 0 0 3px #00ffcc; background: rgba(255,255,255,0.15); }
     .cp-app-icon { width: 72px; height: 72px; border-radius: 18px; display: flex; justify-content: center; align-items: center; font-size: 38px; color: #fff; box-shadow: 0 6px 15px rgba(0,0,0,0.3); position: relative; }
     .cp-app-name { color: #fff; font-size: 13px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
     .badge { position: absolute; top: -4px; right: -4px; background: #ff3b30; color: #fff; font-size: 12px; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #111; }
 
-    /* 4. Fullscreen YouTube Player Overlay */
     #youtube-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 90; display: none; }
     #youtube-screen.active { display: block; }
-    #yt-player-container { width: 100%; height: 100%; }
-    #yt-player-container iframe { width: 100%; height: 100%; border: none; }
-    .yt-close-btn { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 15px; border-radius: 20px; z-index: 95; cursor: pointer; border: 1px solid #555; }
+    #yt-player { width: 100%; height: 100%; }
 
     .hidden { opacity: 0; pointer-events: none; }
   </style>
@@ -116,7 +108,6 @@
 
 <body>
 
-  <!-- الباركود المنسدل -->
   <div id="pair-banner">
     <div id="qrcode"></div>
     <div style="text-align: right;">
@@ -125,13 +116,11 @@
     </div>
   </div>
 
-  <!-- Boot Screen -->
   <div id="boot-screen">
     <img src="U22211ntitled.png" alt="Toyota Logo">
     <div class="boot-warning">تأكد مما يحيط بك لضمان السلامه أثناء عرض صور الكاميرا</div>
   </div>
 
-  <!-- Toyota Main Screen -->
   <div class="screen-bg">
     <div class="top-bar">
       <span>🌐</span><span>📶</span><span class="time" id="clock">4:27 AM</span>
@@ -159,7 +148,7 @@
 
       <div class="bottom-row">
         <div class="widget-box settings-btn"><div class="widget-icon">⚙️</div><div>الإعدادات</div></div>
-        <div class="widget-box carplay-btn" onclick="openCarPlay()"><div class="widget-icon">▶</div><div style="font-size: 13px;">Apple CarPlay</div></div>
+        <div class="widget-box carplay-btn"><div class="widget-icon">▶</div><div style="font-size: 13px;">Apple CarPlay</div></div>
         <div class="widget-box phone-btn"><div class="widget-icon">📞</div><div>هاتف</div></div>
         <div class="widget-box theme-card">
           <div class="theme-title">المظهر</div>
@@ -169,7 +158,6 @@
     </div>
   </div>
 
-  <!-- Apple CarPlay Screen -->
   <div id="carplay-screen">
     <div class="cp-sidebar">
       <div class="cp-status"><span>10:51</span><span>5G 📶</span><span>🔋</span></div>
@@ -178,7 +166,7 @@
         <div class="cp-quick-icon" style="background:#ff3b30;">🎙️</div>
         <div class="cp-quick-icon" style="background:#34c759;">📞<div class="badge">2</div></div>
       </div>
-      <div class="cp-home-btn" onclick="closeCarPlay()"><div></div><div></div><div></div><div></div></div>
+      <div class="cp-home-btn"><div></div><div></div><div></div><div></div></div>
     </div>
 
     <div class="cp-grid">
@@ -198,7 +186,7 @@
         <div class="cp-app-icon" style="background: #34c759;">💬</div>
         <span class="cp-app-name">Message</span>
       </div>
-      <div class="cp-app-item" data-index="4" onclick="openYoutube()">
+      <div class="cp-app-item" data-index="4">
         <div class="cp-app-icon" style="background: #ff0000;">▶</div>
         <span class="cp-app-name">YouTube</span>
       </div>
@@ -217,14 +205,13 @@
     </div>
   </div>
 
-  <!-- YouTube Overlay -->
   <div id="youtube-screen">
-    <div class="yt-close-btn" onclick="closeYoutube()">إغلاق ✕</div>
-    <div id="yt-player-container"></div>
+    <div id="yt-player"></div>
   </div>
 
   <script>
     const socket = io();
+    let player = null;
     let selectedIndex = 0;
     const totalApps = 8;
 
@@ -251,33 +238,59 @@
       setTimeout(() => banner.classList.remove('show'), 5000);
     });
 
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('yt-player', {
+        height: '100%',
+        width: '100%',
+        playerVars: {
+          'autoplay': 1,
+          'controls': 1,
+          'playsinline': 1,
+          'rel': 0
+        }
+      });
+    }
+
     function openCarPlay() { document.getElementById('carplay-screen').classList.add('active'); }
     function closeCarPlay() { document.getElementById('carplay-screen').classList.remove('active'); }
     function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
-    
     function closeYoutube() { 
       document.getElementById('youtube-screen').classList.remove('active'); 
-      document.getElementById('yt-player-container').innerHTML = '';
+      if (player && player.stopVideo) player.stopVideo();
     }
 
-    // بناء مشغل الفيديو وبدء التجميع الفوري
-    function playVideoDirect(videoId) {
+    function triggerPlayVideo(vid) {
       openYoutube();
-      const container = document.getElementById('yt-player-container');
-      container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+      if (player && player.loadVideoById) {
+        player.loadVideoById(vid);
+        player.playVideo();
+      }
     }
 
-    // استقبال الأوامر العامة
+    socket.on('playYoutube', (data) => {
+      const vId = typeof data === 'string' ? data : data.videoId;
+      if (vId) triggerPlayVideo(vId);
+    });
+
     socket.on('stateUpdate', (state) => {
       if (state.currentApp === 'carplay') openCarPlay();
       if (state.currentApp === 'home') { closeCarPlay(); closeYoutube(); }
       if (state.currentApp === 'youtube' && state.youtubeId) {
-        playVideoDirect(state.youtubeId);
+        triggerPlayVideo(state.youtubeId);
       }
     });
 
-    // التنقل بالأسهم والأوامر الإضافية
     socket.on('remoteNavigate', (dir) => {
+      const ytScreen = document.getElementById('youtube-screen');
+      if (ytScreen.classList.contains('active')) {
+        if (dir === 'select' && player) {
+          const state = player.getPlayerState();
+          if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+          else player.playVideo();
+        }
+        return;
+      }
+
       const items = document.querySelectorAll('.cp-app-item');
       items[selectedIndex].classList.remove('selected');
 
