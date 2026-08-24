@@ -204,7 +204,6 @@
     let player = null;
     let playerReady = false;
     let pendingVideoId = null;
-    let audioUnlocked = false;
 
     // المتغيرات الخاصة بالتحكم بالأسهم داخل CarPlay
     let currentCarPlayIndex = 0;
@@ -241,11 +240,10 @@
           'controls': 1,
           'playsinline': 1,
           'enablejsapi': 1,
-          'rel': 0
+          'origin': window.location.origin
         },
         events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
+          'onReady': onPlayerReady
         }
       });
     }
@@ -258,13 +256,6 @@
       }
     }
 
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PAUSED && !audioUnlocked) {
-        player.mute();
-        player.playVideo();
-      }
-    }
-
     function openCarPlay() {
       document.getElementById('carplay-screen').classList.add('active');
       updateCarPlaySelection();
@@ -274,7 +265,10 @@
       document.getElementById('carplay-screen').classList.remove('active');
     }
 
-    function openYoutube() { document.getElementById('youtube-screen').classList.add('active'); }
+    function openYoutube() { 
+      document.getElementById('youtube-screen').classList.add('active'); 
+    }
+
     function closeYoutube() { 
       document.getElementById('youtube-screen').classList.remove('active'); 
       if (player && player.stopVideo) player.stopVideo();
@@ -287,19 +281,11 @@
         return;
       }
 
-      if (!audioUnlocked) {
-        player.loadVideoById({ videoId: videoId });
-        player.mute();
-        player.playVideo();
-      } else {
-        player.loadVideoById({ videoId: videoId });
-        player.unMute();
-        player.setVolume(100);
-        player.playVideo();
-      }
+      // الطريقة الأصلية المستقرة لتشغيل الفيديو بدون مشاكل
+      player.loadVideoById(videoId);
+      player.playVideo();
     }
 
-    // تحديث التحديد البصري للتطبيقات داخل CarPlay بناءً على الفهرس
     function updateCarPlaySelection() {
       const items = document.querySelectorAll('.cp-app-item');
       items.forEach((item, index) => {
@@ -325,12 +311,11 @@
     });
 
     socket.on('remoteNavigate', (dir) => {
-      audioUnlocked = true;
       const cpScreen = document.getElementById('carplay-screen');
       const isCarPlayActive = cpScreen.classList.contains('active');
       const isYoutubeActive = document.getElementById('youtube-screen').classList.contains('active');
 
-      // إذا كنا داخل واجهة CarPlay، اجعل الأسهم تحرك التحديد بين الأيقونات
+      // التحكم بالأسهم داخل واجهة CarPlay
       if (isCarPlayActive) {
         if (dir === 'right') {
           currentCarPlayIndex = (currentCarPlayIndex + 1) % totalCarPlayItems;
@@ -345,24 +330,16 @@
           currentCarPlayIndex = (currentCarPlayIndex - 4 + totalCarPlayItems) % totalCarPlayItems;
           updateCarPlaySelection();
         } else if (dir === 'select') {
-          // عند الضغط على الزر المحدد، افتح التطبيق المطابق (مثل اليوتيوب إذا كان الفهرس 4)
-          const selectedItem = document.querySelector(`.cp-app-item[data-index="${currentCarPlayIndex}"]`);
-          if (selectedItem) {
-            if (currentCarPlayIndex === 4) {
-              openYoutube();
-            } else {
-              // يمكنك إضافة إجراءات لبقية التطبيقات هنا لو رغبت
-            }
+          if (currentCarPlayIndex === 4) {
+            openYoutube();
           }
         }
         return;
       }
 
-      // تحكم اليوتيوب والتحكم الاعتيادي إذا لم يكن الكاربلاي مفتوحاً
-      if (player && playerReady) {
-        player.unMute();
-        player.setVolume(100);
-        if (dir === 'select' && isYoutubeActive) {
+      // التحكم الاعتيادي إذا لم يكن الكاربلاي مفتوحاً
+      if (player && playerReady && isYoutubeActive) {
+        if (dir === 'select') {
           const state = player.getPlayerState();
           if (state === YT.PlayerState.PLAYING) player.pauseVideo();
           else player.playVideo();
